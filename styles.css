@@ -97,6 +97,31 @@ body {
     touch-action: none; /* enable drag gestures without page scroll */
 }
 
+/* App sizing for mobile viewports (iOS safe areas) */
+:root {
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+#app {
+    height: 100dvh;
+    max-height: 100dvh;
+}
+
+@supports not (height: 100dvh) {
+    #app { height: 100vh; max-height: 100vh; }
+}
+
+/* Keep controls visible above home indicator */
+#controls {
+    padding-bottom: calc(0.75rem + var(--safe-bottom));
+}
+
+/* Slides bar respect notch area if present */
+#slides-bar {
+    padding-top: var(--safe-top);
+}
+
 /* Pitch overlay to highlight the pitch area */
 #pitch-container::after {
     content: '';
