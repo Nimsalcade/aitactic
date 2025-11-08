@@ -6,6 +6,11 @@
     -webkit-tap-highlight-color: transparent;
 }
 
+html, body {
+    height: 100%;
+    overflow: hidden; /* prevent page scrolling */
+}
+
 body {
     touch-action: manipulation;
     overscroll-behavior-y: none;
@@ -89,6 +94,7 @@ body {
     position: relative;
     width: 100%;
     height: 100%;
+    touch-action: none; /* enable drag gestures without page scroll */
 }
 
 /* Pitch overlay to highlight the pitch area */

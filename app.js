@@ -13,6 +13,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const confirmMessage = document.getElementById('confirm-message');
     const confirmOk = document.getElementById('confirm-ok');
     const confirmCancel = document.getElementById('confirm-cancel');
+    // Drawing removed
+    const pitchContainer = document.getElementById('pitch-container');
     
     // Slides state (simple)
     let slides = [];
@@ -22,6 +24,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return currentSlideContainer || playersRoot;
     }
     
+    // Drawing removed
     // Standalone draggable for 15px ball elements
     function makeDraggableBallEl(element) {
         const ballSize = 15;
@@ -132,7 +135,6 @@ document.addEventListener('DOMContentLoaded', () => {
         return false;
     }
     const clearAllBtn = document.getElementById('clear-all');
-    const pitchContainer = document.getElementById('pitch-container');
     
     let isEditing = false;
     
@@ -301,6 +303,88 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 });
             });
+
+            // --- Mobile editing: double-tap or long-press on number/label ---
+            let blockDelete = false;
+            const setupTouchEdit = (targetEl, onBeginEdit) => {
+                let lastTap = 0;
+                let longPressTimer = null;
+                const LONG_PRESS_MS = 450;
+                const TAP_WINDOW = 300;
+                
+                function begin() {
+                    blockDelete = true;
+                    onBeginEdit();
+                }
+                
+                targetEl.addEventListener('touchstart', (ev) => {
+                    ev.stopPropagation();
+                    longPressTimer = setTimeout(begin, LONG_PRESS_MS);
+                }, { passive: true });
+                
+                targetEl.addEventListener('touchend', (ev) => {
+                    ev.stopPropagation();
+                    if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
+                    const now = Date.now();
+                    if (now - lastTap < TAP_WINDOW) {
+                        begin();
+                    }
+                    lastTap = now;
+                }, { passive: true });
+                
+                targetEl.addEventListener('touchmove', (ev) => {
+                    if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
+                }, { passive: true });
+            };
+            
+            // Hook number edit
+            setupTouchEdit(numberSpan, () => {
+                if (isEditing) return;
+                isEditing = true;
+                const currentText = numberSpan.textContent || '';
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.className = 'player-input';
+                input.value = currentText;
+                input.maxLength = 3;
+                numberSpan.textContent = '';
+                numberSpan.appendChild(input);
+                input.focus();
+                const save = () => {
+                    numberSpan.textContent = input.value.trim() || currentText;
+                    isEditing = false;
+                    setTimeout(() => { blockDelete = false; }, 50);
+                };
+                input.addEventListener('blur', save);
+                input.addEventListener('keypress', (e) => { if (e.key === 'Enter') save(); });
+            });
+            
+            // Hook label edit
+            setupTouchEdit(positionSpan, () => {
+                if (isEditing) return;
+                isEditing = true;
+                const currentLabel = positionSpan.textContent || '';
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.className = 'player-input';
+                input.value = currentLabel;
+                input.maxLength = 16;
+                input.style.fontSize = '0.7rem';
+                input.style.color = '#ffffff';
+                input.style.textTransform = 'none';
+                positionSpan.textContent = '';
+                positionSpan.appendChild(input);
+                input.focus();
+                input.select();
+                const saveLabel = () => {
+                    const newText = input.value.trim();
+                    positionSpan.textContent = newText || currentLabel;
+                    isEditing = false;
+                    setTimeout(() => { blockDelete = false; }, 50);
+                };
+                input.addEventListener('blur', saveLabel);
+                input.addEventListener('keypress', (ke) => { if (ke.key === 'Enter') saveLabel(); });
+            });
         }
         
         // Add triple-click to delete player
@@ -315,6 +399,11 @@ document.addEventListener('DOMContentLoaded', () => {
             // Don't delete if player was just dragged
             if (wasDragged) {
                 wasDragged = false;
+                clickCount = 0;
+                return;
+            }
+            // Suppress delete while editing/opening edit via touch
+            if (typeof blockDelete !== 'undefined' && blockDelete) {
                 clickCount = 0;
                 return;
             }
@@ -404,6 +493,10 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             
             e.stopPropagation();
+            if (typeof blockDelete !== 'undefined' && blockDelete) {
+                tapCount = 0;
+                return;
+            }
             tapCount++;
             
             if (tapTimer) {
@@ -882,7 +975,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         
         // Clicking anywhere on blank pitch clears selection
-        pitchContainer.addEventListener('click', (e) => {
+    pitchContainer.addEventListener('click', (e) => {
             if (e.target.closest('.player') || e.target.closest('.ball')) return;
             if (ignoreNextPitchClick) {
                 ignoreNextPitchClick = false;
@@ -931,7 +1024,9 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Prevent default touch behavior
     document.addEventListener('touchmove', (e) => {
-        if (e.target.className.includes('player')) {
+        const t = e.target;
+        if ((t.classList && (t.classList.contains('player') || t.classList.contains('player-input') || t.classList.contains('player-number') || t.classList.contains('player-position'))) ||
+            (t.closest && t.closest('#pitch-container'))) {
             e.preventDefault();
         }
     }, { passive: false });
