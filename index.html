@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Soccer Tactical Board</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="bg-gray-100 flex items-center justify-center h-screen overflow-hidden">
+    <div id="app" class="relative w-full max-w-[414px] h-[896px] overflow-hidden bg-white shadow-2xl rounded-3xl">
+        <!-- In-app confirm modal -->
+        <div id="confirm-overlay" class="modal-overlay hidden">
+            <div class="modal-card">
+                <div id="confirm-message" class="modal-message">Are you sure?</div>
+                <div class="modal-actions">
+                    <button id="confirm-cancel" class="modal-btn modal-btn-secondary">Cancel</button>
+                    <button id="confirm-ok" class="modal-btn modal-btn-danger">OK</button>
+                </div>
+            </div>
+        </div>
+        <!-- Slides Bar -->
+        <div id="slides-bar" class="absolute top-0 left-0 right-0 z-50">
+            <div class="slides-bar-inner">
+                <div id="slides-list" class="slides-list"></div>
+                <button id="add-slide" class="slide-add-btn" title="Add slide">+</button>
+            </div>
+        </div>
+        <!-- Pitch Container -->
+        <div id="pitch-container" class="relative w-full h-full">
+            <!-- Pitch Image -->
+            <img src="pitch.png" alt="Soccer Pitch" class="w-full h-full object-cover">
+            
+            <!-- Players will be added here dynamically -->
+            <div id="players-container" class="absolute inset-0"></div>
+            
+            <!-- Black box - Player boundary area -->
+            <div id="black-box" style="position: absolute; width: 375px; height: 620px; pointer-events: none;"></div>
+            
+            
+            <!-- Controls will go here -->
+            <div id="controls" class="absolute bottom-0 left-0 right-0 p-3 pb-3">
+                <div class="flex justify-center items-center gap-3 mb-3">
+                    <div class="flex items-center gap-2">
+                        <label class="control-select-label">My Team</label>
+                        <select id="formation-my" class="control-select">
+                            <option value="4-4-2" selected>4-4-2</option>
+                            <option value="4-3-3">4-3-3</option>
+                            <option value="4-2-3-1">4-2-3-1</option>
+                            <option value="3-5-2">3-5-2</option>
+                            <option value="5-3-2">5-3-2</option>
+                            <option value="3-4-3">3-4-3</option>
+                            <option value="4-5-1">4-5-1</option>
+                        </select>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <label class="control-select-label">Opposition</label>
+                        <select id="formation-opposition" class="control-select">
+                            <option value="4-4-2" selected>4-4-2</option>
+                            <option value="4-3-3">4-3-3</option>
+                            <option value="4-2-3-1">4-2-3-1</option>
+                            <option value="3-5-2">3-5-2</option>
+                            <option value="5-3-2">5-3-2</option>
+                            <option value="3-4-3">3-4-3</option>
+                            <option value="4-5-1">4-5-1</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="flex justify-center items-center gap-3 controls-row">
+                    <button id="add-player" class="control-btn control-btn-blue group">
+                        <span class="control-btn-icon">+</span>
+                        <span class="control-btn-text">Player</span>
+                    </button>
+                    <button id="add-ball" class="control-btn control-btn-amber group">
+                        <span class="control-btn-icon">●</span>
+                        <span class="control-btn-text">Ball</span>
+                    </button>
+                    <button id="add-my-team" class="control-btn control-btn-blue group">
+                        <span class="control-btn-icon">⚑</span>
+                        <span class="control-btn-text">My Team</span>
+                    </button>
+                    <button id="add-opposition" class="control-btn control-btn-green group">
+                        <span class="control-btn-icon">⊕</span>
+                        <span class="control-btn-text">Opposition</span>
+                    </button>
+                    <button id="clear-all" class="control-btn control-btn-red group">
+                        <span class="control-btn-icon">✕</span>
+                        <span class="control-btn-text">Clear</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,477 @@
+/* Base styles */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+}
+
+body {
+    touch-action: manipulation;
+    overscroll-behavior-y: none;
+}
+
+/* Prevent text selection */
+* {
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+}
+
+/* Player styles */
+.player {
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background-color: rgba(255, 255, 255, 0.9);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    color: #1a202c;
+    cursor: move;
+    border: 2px solid #2d3748;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    touch-action: none;
+    z-index: 10;
+    user-select: none;
+}
+
+/* Opposition player style */
+.player.opposition {
+    background-color: rgba(239, 68, 68, 0.9);
+    border-color: #7f1d1d;
+    color: white;
+}
+
+/* Player number */
+.player-number {
+    font-size: 0.5rem;
+    pointer-events: none;
+    width: 100%;
+    text-align: center;
+}
+
+/* Editable input */
+.player-input {
+    width: 100%;
+    height: 100%;
+    border: none;
+    background: transparent;
+    text-align: center;
+    font-size: 0.5rem;
+    font-weight: bold;
+    color: inherit;
+    padding: 0;
+    margin: 0;
+    outline: none;
+    pointer-events: auto;
+}
+
+/* Position indicator */
+.player-position {
+    position: absolute;
+    bottom: -20px;
+    left: 0;
+    right: 0;
+    text-align: center;
+    font-size: 0.7rem;
+    color: white;
+    text-shadow: 0 0 3px rgba(0, 0, 0, 0.8);
+    pointer-events: auto; /* allow double-click editing */
+    cursor: text;
+}
+
+/* Pitch container */
+#pitch-container {
+    position: relative;
+    width: 100%;
+    height: 100%;
+}
+
+/* Pitch overlay to highlight the pitch area */
+#pitch-container::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.3); /* Semi-transparent black */
+    pointer-events: none; /* Allow clicks to pass through */
+    z-index: 1;
+}
+
+/* Make sure the pitch image is above the overlay */
+#pitch-container img {
+    position: relative;
+    z-index: 0;
+}
+
+/* Players container should be above the overlay */
+#players-container {
+    z-index: 2;
+}
+
+/* Controls should be above everything */
+#controls {
+    z-index: 3;
+}
+
+/* In-app modal */
+.modal-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 50;
+}
+.hidden { display: none; }
+.modal-card {
+    width: 85%;
+    max-width: 300px;
+    background: #111827;
+    color: #fff;
+    border-radius: 12px;
+    padding: 16px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.45);
+    border: 1px solid rgba(255,255,255,0.08);
+}
+.modal-message {
+    font-size: 0.9rem;
+    line-height: 1.3;
+    margin-bottom: 12px;
+    text-align: center;
+}
+.modal-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+}
+.modal-btn {
+    padding: 8px 14px;
+    border-radius: 10px;
+    border: none;
+    font-weight: 600;
+    font-size: 0.8rem;
+    cursor: pointer;
+}
+.modal-btn-secondary { background: #374151; color: #fff; }
+.modal-btn-secondary:hover { background: #4b5563; }
+.modal-btn-danger { background: #ef4444; color: #fff; }
+.modal-btn-danger:hover { background: #dc2626; }
+
+/* Selection rectangle and selected tokens */
+.selection-rect {
+    position: absolute;
+    border: 1px dashed #60a5fa;
+    background: rgba(96, 165, 250, 0.15);
+    display: none;
+    z-index: 4;
+    pointer-events: none;
+}
+.player.selected,
+.ball.selected {
+    outline: 2px solid #fbbf24;
+    box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.35);
+}
+
+/* Slides bar */
+#slides-bar {
+    height: 58px;
+    pointer-events: none; /* allow pitch interactions where no buttons */
+    background: transparent;
+}
+.slides-bar-inner {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    pointer-events: auto;
+}
+.slides-list {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    overflow-x: auto;
+    flex: 1;
+}
+.slide-thumb {
+    position: relative;
+    width: 70px;
+    height: 34px;
+    border-radius: 8px;
+    background: rgba(17, 24, 39, 0.85);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+    cursor: pointer;
+    user-select: none;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.25);
+}
+.slide-thumb .label {
+    pointer-events: auto;
+}
+.slide-thumb.active {
+    border-color: #60a5fa;
+    box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.35);
+}
+.slide-thumb .close {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    border: none;
+    background: #ef4444;
+    color: #fff;
+    font-size: 0.65rem;
+    line-height: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+.slide-title-input {
+    background: transparent;
+    color: #fff;
+    border: none;
+    outline: none;
+    text-align: center;
+    width: 80%;
+    font-size: 0.7rem;
+}
+.slide-add-btn {
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    border: 1px dashed rgba(255, 255, 255, 0.35);
+    background: rgba(31, 41, 55, 0.85);
+    color: #fff;
+    font-size: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.25);
+}
+
+/* Keep controls on a single row (no wrap) */
+#controls .controls-row {
+    flex-wrap: nowrap;
+}
+
+/* Formation selects */
+.control-select {
+    appearance: none;
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 0.5rem;
+    padding: 0.35rem 0.6rem;
+    font-size: 0.75rem;
+    outline: none;
+    transition: all 0.2s ease;
+}
+
+.control-select:focus {
+    border-color: rgba(255, 255, 255, 0.4);
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.control-select-label {
+    font-size: 0.7rem;
+    color: rgba(255, 255, 255, 0.85);
+    letter-spacing: 0.02em;
+}
+
+/* Ball styles (15x15 image) */
+.ball {
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    cursor: move;
+    z-index: 10;
+    touch-action: none;
+    user-select: none;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+    transition: filter 0.2s ease;
+}
+
+.ball:hover {
+    filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.4));
+}
+
+.ball:active {
+    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.4));
+}
+
+/* Enhanced Button Styles */
+.control-btn {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.25rem;
+    padding: 0.45rem 0.55rem;
+    min-width: 48px;
+    border: none;
+    border-radius: 0.75rem;
+    font-weight: 600;
+    font-size: 0.65rem;
+    letter-spacing: 0.025em;
+    color: white;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    overflow: hidden;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2), 
+                0 2px 4px -1px rgba(0, 0, 0, 0.1),
+                inset 0 -2px 0 0 rgba(0, 0, 0, 0.2);
+    backdrop-filter: blur(8px);
+}
+
+.control-btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0) 50%);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+}
+
+.control-btn:hover::before {
+    opacity: 1;
+}
+
+.control-btn:active {
+    transform: translateY(1px);
+    box-shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.3), 
+                inset 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+}
+
+.control-btn-icon {
+    font-size: 0.9rem;
+    font-weight: 700;
+    line-height: 1;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.control-btn:hover .control-btn-icon {
+    transform: scale(1.15);
+}
+
+.control-btn-text {
+    font-size: 0.52rem;
+    text-transform: uppercase;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    opacity: 0.95;
+}
+
+/* Blue Button - Add Player */
+.control-btn-blue {
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+}
+
+.control-btn-blue:hover {
+    background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%);
+    box-shadow: 0 6px 12px -2px rgba(59, 130, 246, 0.4), 
+                0 3px 6px -1px rgba(59, 130, 246, 0.2),
+                inset 0 -2px 0 0 rgba(0, 0, 0, 0.2);
+}
+
+/* Green Button - Add Opposition */
+.control-btn-green {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+}
+
+.control-btn-green:hover {
+    background: linear-gradient(135deg, #34d399 0%, #10b981 100%);
+    box-shadow: 0 6px 12px -2px rgba(16, 185, 129, 0.4), 
+                0 3px 6px -1px rgba(16, 185, 129, 0.2),
+                inset 0 -2px 0 0 rgba(0, 0, 0, 0.2);
+}
+
+/* Red Button - Clear All */
+.control-btn-red {
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+}
+
+.control-btn-red:hover {
+    background: linear-gradient(135deg, #f87171 0%, #ef4444 100%);
+    box-shadow: 0 6px 12px -2px rgba(239, 68, 68, 0.4), 
+                0 3px 6px -1px rgba(239, 68, 68, 0.2),
+                inset 0 -2px 0 0 rgba(0, 0, 0, 0.2);
+}
+
+/* Amber Button - Add Ball */
+.control-btn-amber {
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+}
+
+.control-btn-amber:hover {
+    background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+    box-shadow: 0 6px 12px -2px rgba(245, 158, 11, 0.4), 
+                0 3px 6px -1px rgba(245, 158, 11, 0.2),
+                inset 0 -2px 0 0 rgba(0, 0, 0, 0.2);
+}
+
+/* Ripple effect on click */
+.control-btn::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.3);
+    transform: translate(-50%, -50%);
+    transition: width 0.6s, height 0.6s;
+}
+
+.control-btn:active::after {
+    width: 140px;
+    height: 140px;
+    opacity: 0;
+    transition: 0s;
+}
+
+/* Extra small screens tweaks */
+@media (max-width: 380px) {
+    .control-btn {
+        min-width: 64px;
+        padding: 0.5rem 0.6rem;
+    }
+    .control-btn-icon { font-size: 0.9rem; }
+    .control-btn-text { font-size: 0.55rem; }
+}
+
+
+/* When pitch is hovered, make it slightly darker */
+#pitch-container:hover #pitch-overlay {
+    background-color: rgba(0, 0, 0, 0.4);
+}
+
+/* Mobile optimization */
+@media (max-width: 414px) {
+    #app {
+        width: 100%;
+        height: 100vh;
+        max-width: 100% !important;
+        border-radius: 0 !important;
+    }
+}
