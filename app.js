@@ -9,6 +9,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const slidesBar = document.getElementById('slides-bar');
     const slidesList = document.getElementById('slides-list');
     const addSlideBtn = document.getElementById('add-slide');
+    const exportGifBtn = document.getElementById('export-gif');
     const confirmOverlay = document.getElementById('confirm-overlay');
     const confirmMessage = document.getElementById('confirm-message');
     const confirmOk = document.getElementById('confirm-ok');
@@ -20,6 +21,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let slides = [];
     let activeSlideId = null;
     let currentSlideContainer = null; // active slide layer inside playersRoot
+    let isExportingGif = false;
     function getActiveContainer() {
         return currentSlideContainer || playersRoot;
     }
@@ -27,7 +29,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Drawing removed
     // Standalone draggable for 15px ball elements
     function makeDraggableBallEl(element) {
-        const ballSize = 15;
+        const ballSize = 10;
         let pos3 = 0, pos4 = 0;
         element.onmousedown = dragMouseDown;
         element.ontouchstart = dragTouchStart;
@@ -126,8 +128,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const targetY = y;
         const threshold = 20; // px radius to consider occupied
         for (const el of teamNodes) {
-            const cx = el.offsetLeft + 12.5;
-            const cy = el.offsetTop + 12.5;
+            const half = el.offsetWidth / 2;
+            const cx = el.offsetLeft + half;
+            const cy = el.offsetTop + half;
             const dx = cx - targetX;
             const dy = cy - targetY;
             if (Math.hypot(dx, dy) <= threshold) return true;
@@ -144,50 +147,44 @@ document.addEventListener('DOMContentLoaded', () => {
         'CDM', 'CM', 'CAM', 'RM', 'LM',
         'RW', 'LW', 'ST', 'CF'
     ];
+    let tokenIdCounter = 0;
+    function ensureTokenId(el) {
+        if (!el || !el.dataset) return;
+        const existing = el.dataset.tokenId;
+        if (existing) {
+            const maybeNum = parseInt(existing.split('-')[1], 10);
+            if (!Number.isNaN(maybeNum)) {
+                tokenIdCounter = Math.max(tokenIdCounter, maybeNum);
+            }
+            return;
+        }
+        tokenIdCounter += 1;
+        el.dataset.tokenId = `token-${tokenIdCounter}`;
+    }
     
-    // Helper function to get black-box boundaries (player playable area)
+    // Helper function to describe the playable bounds (entire pitch surface)
     function getBlackBoxBounds() {
-        const blackBox = document.getElementById('black-box');
-        if (!blackBox) {
-            // Fallback to pitch boundaries if black-box doesn't exist
-        const pitchImg = document.querySelector('#pitch-container img');
-        const rect = pitchImg.getBoundingClientRect();
         const containerRect = pitchContainer.getBoundingClientRect();
-            const pitchAspect = 1320 / 2868;
-        let pitchWidth, pitchHeight, pitchX, pitchY;
-        
-        if (rect.width / rect.height > pitchAspect) {
-            pitchHeight = rect.height;
-            pitchWidth = pitchHeight * pitchAspect;
-            pitchX = rect.left + (rect.width - pitchWidth) / 2;
-            pitchY = rect.top;
-        } else {
-            pitchWidth = rect.width;
-            pitchHeight = pitchWidth / pitchAspect;
-            pitchX = rect.left;
-            pitchY = rect.top + (rect.height - pitchHeight) / 2;
-        }
-        
-            return {
-                minX: pitchX,
-                maxX: pitchX + pitchWidth,
-                minY: pitchY,
-                maxY: pitchY + pitchHeight,
-                width: pitchWidth,
-                height: pitchHeight
-            };
-        }
-        
-        const blackBoxRect = blackBox.getBoundingClientRect();
-        const containerRect = pitchContainer.getBoundingClientRect();
-        
+        const pitchImg = pitchContainer.querySelector('img');
+        const imageRect = pitchImg ? pitchImg.getBoundingClientRect() : null;
+        const rect = (imageRect && imageRect.width > 0) ? imageRect : containerRect;
+        // Limit the playable area to the inner pitch (inside the white touchlines)
+        // using a conservative inset ratio that matches our horizontal asset.
+        const insetRatioX = 0.075; // ~7.5% from left/right edges
+        const insetRatioY = 0.075; // ~7.5% from top/bottom edges
+        const insetX = rect.width * insetRatioX;
+        const insetY = rect.height * insetRatioY;
+        const minX = rect.left + insetX;
+        const maxX = rect.right - insetX;
+        const minY = rect.top + insetY;
+        const maxY = rect.bottom - insetY;
         return {
-            minX: blackBoxRect.left,
-            maxX: blackBoxRect.right,
-            minY: blackBoxRect.top,
-            maxY: blackBoxRect.bottom,
-            width: blackBoxRect.width,
-            height: blackBoxRect.height
+            minX,
+            maxX,
+            minY,
+            maxY,
+            width: maxX - minX,
+            height: maxY - minY
         };
     }
     
@@ -198,13 +195,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const player = document.createElement('div');
         player.className = `player ${isOpposition ? 'opposition' : ''}`;
         player.draggable = true;
+        ensureTokenId(player);
         
-        // Get black-box boundaries (player playable area)
+        // Get current pitch boundaries (player playable area)
         const bounds = getBlackBoxBounds();
         const containerRect = pitchContainer.getBoundingClientRect();
         
-        // Adjust x, y to be within black-box boundaries
-        const playerSize = 25; // Should match the CSS size
+        // Adjust x, y to be within pitch boundaries
+        const playerSize = 20; // Match CSS size
         const adjustedX = Math.max(bounds.minX - containerRect.left, Math.min(x, bounds.maxX - playerSize - containerRect.left));
         const adjustedY = Math.max(bounds.minY - containerRect.top, Math.min(y, bounds.maxY - playerSize - containerRect.top));
         
@@ -213,8 +211,9 @@ document.addEventListener('DOMContentLoaded', () => {
         y = adjustedY;
         
         // Position the player at the clicked coordinates (centered)
-        const playerX = x - 12.5; // Half of player width (25px)
-        const playerY = y - 12.5; // Half of player height (25px)
+        const half = playerSize / 2; // 10px
+        const playerX = x - half; // center token
+        const playerY = y - half; // center token
         
         player.style.left = `${playerX}px`;
         player.style.top = `${playerY}px`;
@@ -534,13 +533,17 @@ document.addEventListener('DOMContentLoaded', () => {
         ball.alt = 'Ball';
         ball.className = 'ball';
         ball.draggable = true;
+        ensureTokenId(ball);
+        // Ensure size is exactly 10x10 regardless of external CSS
+        ball.style.width = '10px';
+        ball.style.height = '10px';
         
-        // Get black-box boundaries (player playable area)
+        // Respect the same pitch boundaries as players
         const bounds = getBlackBoxBounds();
         const containerRect = pitchContainer.getBoundingClientRect();
         
         // Dimensions for ball
-        const ballSize = 15; // 15x15 per requirement
+        const ballSize = 10; // Match CSS (10x10)
         
         // If no coordinates provided, place at center
         if (typeof x !== 'number' || typeof y !== 'number') {
@@ -548,7 +551,7 @@ document.addEventListener('DOMContentLoaded', () => {
             y = bounds.minY - containerRect.top + (bounds.height / 2);
         }
         
-        // Clamp within bounds
+        // Clamp within the playable bounds
         const adjustedX = Math.max(bounds.minX - containerRect.left, Math.min(x, bounds.maxX - ballSize - containerRect.left));
         const adjustedY = Math.max(bounds.minY - containerRect.top, Math.min(y, bounds.maxY - ballSize - containerRect.top));
         
@@ -627,13 +630,13 @@ document.addEventListener('DOMContentLoaded', () => {
     // Make elements draggable with boundary checking
     function makeDraggable(element) {
         let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
-        const playerSize = 25; // Should match the CSS size
+        const playerSize = 20; // Match CSS size
         
         element.onmousedown = dragMouseDown;
         element.ontouchstart = dragTouchStart;
         
         function getPitchBounds() {
-            // Use black-box boundaries for player movement constraints
+            // Use current pitch boundaries for movement constraints
             const bounds = getBlackBoxBounds();
             const containerRect = pitchContainer.getBoundingClientRect();
             
@@ -820,16 +823,37 @@ document.addEventListener('DOMContentLoaded', () => {
         let remaining = Math.max(0, 11 - current);
         if (remaining === 0) return;
         const halfHeight = pitchHeight / 2;
+        const halfWidth = pitchWidth / 2;
+        const isLandscape = pitchWidth >= pitchHeight;
         const offsetX = bounds.minX - containerRect.left;
         const offsetY = bounds.minY - containerRect.top;
         const preset = getFormationPreset(formation);
         
-        function toCoordsHalf(pos) {
-            const yNorm = side === 'top' ? pos.y : (1 - pos.y); // mirror vertically for bottom half
-            const baseY = side === 'top' ? offsetY : offsetY + halfHeight;
+        function toCoordsHalf(pos, whichSide = side) {
+            if (!isLandscape) {
+                const yNorm = whichSide === 'top' ? pos.y : (1 - pos.y); // mirror vertically for bottom half
+                const baseY = whichSide === 'top' ? offsetY : offsetY + halfHeight;
+                return {
+                    x: offsetX + pos.x * pitchWidth,
+                    y: baseY + yNorm * halfHeight
+                };
+            }
+            // Landscape: treat former top/bottom as left/right halves and keep tokens away from the boards
+            const xNorm = whichSide === 'top' ? pos.y : (1 - pos.y);
+            const baseX = whichSide === 'top' ? offsetX : offsetX + halfWidth;
+            const halfEnd = baseX + halfWidth;
+            const horizontalMargin = Math.min(80, halfWidth * 0.08); // keep players off the touchline
+            let innerStart = baseX + horizontalMargin;
+            let innerEnd = halfEnd - horizontalMargin;
+            let usableWidth = innerEnd - innerStart;
+            if (usableWidth <= 0) {
+                usableWidth = halfWidth * 0.6;
+                const center = baseX + halfWidth / 2;
+                innerStart = center - usableWidth / 2;
+            }
             return {
-                x: offsetX + pos.x * pitchWidth,
-                y: baseY + yNorm * halfHeight
+                x: innerStart + xNorm * usableWidth,
+                y: offsetY + pos.x * pitchHeight
             };
         }
         
@@ -842,7 +866,11 @@ document.addEventListener('DOMContentLoaded', () => {
         // Iterate and place up to 'remaining' players in available spots
         for (const pos of ordered) {
             if (remaining <= 0) break;
-            const cp = toCoordsHalf(pos);
+            // In landscape: place my team on the left half, opposition on the right half
+            // In portrait: original behavior (my team bottom, opposition top)
+            const cp = isLandscape
+                ? toCoordsHalf(pos, isOpposition ? 'bottom' : 'top')
+                : toCoordsHalf(pos, isOpposition ? 'top' : 'bottom');
             if (isSpotOccupied(cp.x, cp.y, isOpposition)) continue;
             addPlayer(cp.x, cp.y, isOpposition);
             remaining--;
@@ -854,10 +882,11 @@ document.addEventListener('DOMContentLoaded', () => {
         // Add a single player at center
         // Respect team limit (my team)
         if (getTeamCount(false) < 11) {
-        const rect = pitchContainer.getBoundingClientRect();
-        const x = rect.width / 2;
-        const y = rect.height / 2;
-        addPlayer(x, y, false);
+            const bounds = getBlackBoxBounds();
+            const containerRect = pitchContainer.getBoundingClientRect();
+            const x = bounds.minX - containerRect.left + (bounds.width / 2);
+            const y = bounds.minY - containerRect.top + (bounds.height / 2);
+            addPlayer(x, y, false);
         }
     });
     
@@ -883,19 +912,13 @@ document.addEventListener('DOMContentLoaded', () => {
             addBall(); // center placement when no coordinates
         });
     }
-    // Helper function to check if point is within black-box
+    // Helper function to check if a point is still on the pitch
     function isPointInBlackBox(x, y) {
         const bounds = getBlackBoxBounds();
-        const containerRect = pitchContainer.getBoundingClientRect();
-        const relativeX = x - containerRect.left;
-        const relativeY = y - containerRect.top;
-        const blackBoxRelativeX = bounds.minX - containerRect.left;
-        const blackBoxRelativeY = bounds.minY - containerRect.top;
-        
-        return relativeX >= blackBoxRelativeX && 
-               relativeX <= blackBoxRelativeX + bounds.width &&
-               relativeY >= blackBoxRelativeY && 
-               relativeY <= blackBoxRelativeY + bounds.height;
+        return x >= bounds.minX &&
+               x <= bounds.maxX &&
+               y >= bounds.minY &&
+               y <= bounds.maxY;
     }
     
     // Lasso selection on the pitch
@@ -907,6 +930,17 @@ document.addEventListener('DOMContentLoaded', () => {
         const rectEl = document.createElement('div');
         rectEl.className = 'selection-rect';
         pitchContainer.appendChild(rectEl);
+        // Helper to get playable bounds in container-relative coordinates
+        function getPlayableBoundsLocal() {
+            const bounds = getBlackBoxBounds();
+            const cr = pitchContainer.getBoundingClientRect();
+            return {
+                minX: bounds.minX - cr.left,
+                maxX: bounds.maxX - cr.left,
+                minY: bounds.minY - cr.top,
+                maxY: bounds.maxY - cr.top
+            };
+        }
         
         function updateSelectionRect(x1, y1, x2, y2) {
             const left = Math.min(x1, x2);
@@ -941,8 +975,9 @@ document.addEventListener('DOMContentLoaded', () => {
             // Start selection only when clicking empty space (not a token)
             if (e.target.closest('.player') || e.target.closest('.ball')) return;
             const cr = pitchContainer.getBoundingClientRect();
-            startX = e.clientX - cr.left;
-            startY = e.clientY - cr.top;
+            const bounds = getPlayableBoundsLocal();
+            startX = Math.max(bounds.minX, Math.min(e.clientX - cr.left, bounds.maxX));
+            startY = Math.max(bounds.minY, Math.min(e.clientY - cr.top, bounds.maxY));
             isSelecting = true;
             moved = false;
             rectEl.style.display = 'block';
@@ -953,8 +988,9 @@ document.addEventListener('DOMContentLoaded', () => {
         document.addEventListener('mousemove', (e) => {
             if (!isSelecting) return;
             const cr = pitchContainer.getBoundingClientRect();
-            const x = e.clientX - cr.left;
-            const y = e.clientY - cr.top;
+            const bounds = getPlayableBoundsLocal();
+            const x = Math.max(bounds.minX, Math.min(e.clientX - cr.left, bounds.maxX));
+            const y = Math.max(bounds.minY, Math.min(e.clientY - cr.top, bounds.maxY));
             if (Math.abs(x - startX) > 2 || Math.abs(y - startY) > 2) moved = true;
             updateSelectionRect(startX, startY, x, y);
             selectIntersecting(startX, startY, x, y);
@@ -984,34 +1020,26 @@ document.addEventListener('DOMContentLoaded', () => {
             clearSelection();
         });
     })();
-    // Add player on pitch click (only within black-box area)
+    // Add player on pitch click (only within playable area)
     pitchContainer.addEventListener('click', (e) => {
-        // Only add player if clicking directly on the pitch/black-box, not on a player
-        if (e.target === pitchContainer || e.target.id === 'pitch-container' || e.target.id === 'black-box') {
-            // Check if click is within black-box boundaries
-            if (isPointInBlackBox(e.clientX, e.clientY)) {
-            const rect = pitchContainer.getBoundingClientRect();
-            const x = e.clientX - rect.left;
-            const y = e.clientY - rect.top;
-            addPlayer(x, y, false);
-            }
-        }
+        if (e.target.closest('.player') || e.target.closest('.ball')) return;
+        if (!isPointInBlackBox(e.clientX, e.clientY)) return;
+        const rect = pitchContainer.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        addPlayer(x, y, false);
     });
     
-    // Add touch support for mobile (only within black-box area)
+    // Add touch support for mobile (only within playable area)
     pitchContainer.addEventListener('touchend', (e) => {
-        // Only add player if touching the pitch/black-box, not a player
-        if (e.target === pitchContainer || e.target.id === 'pitch-container' || e.target.id === 'black-box') {
-            e.preventDefault();
-            const touch = e.changedTouches[0];
-            // Check if touch is within black-box boundaries
-            if (isPointInBlackBox(touch.clientX, touch.clientY)) {
-            const rect = pitchContainer.getBoundingClientRect();
-            const x = touch.clientX - rect.left;
-            const y = touch.clientY - rect.top;
-            addPlayer(x, y, false);
-            }
-        }
+        if (e.target.closest('.player') || e.target.closest('.ball')) return;
+        e.preventDefault();
+        const touch = e.changedTouches[0];
+        if (!isPointInBlackBox(touch.clientX, touch.clientY)) return;
+        const rect = pitchContainer.getBoundingClientRect();
+        const x = touch.clientX - rect.left;
+        const y = touch.clientY - rect.top;
+        addPlayer(x, y, false);
     }, { passive: false });
     
     // Clear all players
@@ -1102,67 +1130,244 @@ document.addEventListener('DOMContentLoaded', () => {
         pitchImg.addEventListener('load', updatePitchOverlay);
     }
     
-    // Function to update black box position to align with pitch lines
-    function updateBlackBoxPosition() {
-        const blackBox = document.getElementById('black-box');
-        if (!blackBox) return;
-        
-        const pitchImg = document.querySelector('#pitch-container img');
-        if (!pitchImg) return;
-        
-        const rect = pitchImg.getBoundingClientRect();
-        const containerRect = pitchContainer.getBoundingClientRect();
-        const pitchAspect = 1320 / 2868;
-        
-        let pitchWidth, pitchHeight, pitchX, pitchY;
-        
-        // Calculate the visible pitch area (same logic as used for players)
-        if (rect.width / rect.height > pitchAspect) {
-            // Container is wider than pitch aspect ratio
-            pitchHeight = rect.height;
-            pitchWidth = pitchHeight * pitchAspect;
-            pitchX = (rect.width - pitchWidth) / 2;
-            pitchY = 0;
-        } else {
-            // Container is taller than pitch aspect ratio
-            pitchWidth = rect.width;
-            pitchHeight = pitchWidth / pitchAspect;
-            pitchX = 0;
-            pitchY = (rect.height - pitchHeight) / 2;
-        }
-        
-        // Pixel-based offset adjustments
-        // Adjust these values to fine-tune positioning (in pixels):
-        const offsetLeft = -19;    // Move right (positive) or left (negative)
-        const offsetTop = -183;    // Move down (positive) or up (negative)
-        const offsetRight = 0;  // Move left (positive) or right (negative) - if using right property
-        const offsetBottom = 30; // Move up (positive) or down (negative) - if using bottom property
-        
-        const blackBoxWidth = 375;
-        const blackBoxHeight = 620;
-        
-        // Position using left and top with pixel offsets
-        // Base position: right edge aligns with right edge of pitch, bottom edge aligns with bottom edge
-        blackBox.style.left = `${pitchX + pitchWidth - blackBoxWidth + offsetLeft}px`;
-        blackBox.style.top = `${pitchY + pitchHeight - blackBoxHeight + offsetTop}px`;
-        
-        // Alternative: Use right and bottom properties instead
-        // Uncomment these and comment out the left/top lines above to use:
-        // blackBox.style.right = `${containerRect.width - (pitchX + pitchWidth) + offsetRight}px`;
-        // blackBox.style.bottom = `${containerRect.height - (pitchY + pitchHeight) + offsetBottom}px`;
+    const magicMoveCleanupSymbol = Symbol('magicMoveCleanup');
+    function captureTokenPositions(container) {
+        const map = new Map();
+        if (!container) return map;
+        const tokens = container.querySelectorAll('.player, .ball');
+        tokens.forEach(el => {
+            if (!el.dataset || !el.dataset.tokenId) return;
+            const rect = el.getBoundingClientRect();
+            map.set(el.dataset.tokenId, {
+                left: rect.left,
+                top: rect.top,
+                width: rect.width,
+                height: rect.height,
+                el
+            });
+        });
+        return map;
     }
-    
-    // Update black box position on load and resize
-    window.addEventListener('load', updateBlackBoxPosition);
-    window.addEventListener('resize', updateBlackBoxPosition);
-    
-    // Also update when the image loads
-    if (pitchImg.complete) {
-        updateBlackBoxPosition();
-    } else {
-        pitchImg.addEventListener('load', updateBlackBoxPosition);
+    function snapshotSlidePositions(container) {
+        if (!container) return new Map();
+        const computed = window.getComputedStyle(container);
+        const wasHidden = computed.display === 'none';
+        let prevDisplay = '';
+        let prevVisibility = '';
+        let prevPointer = '';
+        if (wasHidden) {
+            prevDisplay = container.style.display;
+            prevVisibility = container.style.visibility;
+            prevPointer = container.style.pointerEvents;
+            container.style.display = 'block';
+            container.style.visibility = 'hidden';
+            container.style.pointerEvents = 'none';
+        }
+        const positions = captureTokenPositions(container);
+        if (wasHidden) {
+            container.style.display = prevDisplay || 'none';
+            container.style.visibility = prevVisibility || '';
+            container.style.pointerEvents = prevPointer || '';
+        }
+        return positions;
+    }
+    const MAGIC_MOVE_DURATION = 1500; // Duration in ms
+    function playMagicMove(prevPositions, nextPositions) {
+        if (!prevPositions || !prevPositions.size || !nextPositions || !nextPositions.size) return;
+        nextPositions.forEach((nextData, tokenId) => {
+            const prevData = prevPositions.get(tokenId);
+            if (!prevData) return;
+            const el = nextData.el;
+            if (!el) return;
+            const dx = prevData.left - nextData.left;
+            const dy = prevData.top - nextData.top;
+            if (Math.abs(dx) < 0.5 && Math.abs(dy) < 0.5) return;
+            const existingCleanup = el[magicMoveCleanupSymbol];
+            if (typeof existingCleanup === 'function') {
+                existingCleanup();
+            }
+            el.classList.add('magic-move-active');
+            el.style.transition = 'none';
+            el.style.transform = `translate(${dx}px, ${dy}px)`;
+            requestAnimationFrame(() => {
+                void el.offsetWidth;
+                el.style.transition = `transform ${MAGIC_MOVE_DURATION}ms cubic-bezier(0.4, 0, 0.2, 1)`;
+                el.style.transform = 'translate(0, 0)';
+            });
+            let timeoutId = null;
+            const cleanup = () => {
+                if (timeoutId) {
+                    clearTimeout(timeoutId);
+                    timeoutId = null;
+                }
+                el.style.transition = '';
+                el.style.transform = '';
+                el.classList.remove('magic-move-active');
+                el.removeEventListener('transitionend', cleanup);
+                if (el[magicMoveCleanupSymbol] === cleanup) {
+                    delete el[magicMoveCleanupSymbol];
+                }
+            };
+            el[magicMoveCleanupSymbol] = cleanup;
+            el.addEventListener('transitionend', cleanup);
+            timeoutId = setTimeout(cleanup, MAGIC_MOVE_DURATION + 120);
+        });
     }
 
+    const GIF_WORKER_URL = 'vendor/gif.worker.js';
+    const GIF_BACKGROUND = '#01060f';
+    const GIF_STILL_DELAY = 900;
+    const GIF_MIN_FRAME_DELAY = 40;
+    const GIF_CAPTURE_SCALE = 3;
+    const GIF_QUALITY = 2;
+    const GIF_DITHER = 'FloydSteinberg';
+    function waitForAnimationFrame() {
+        return new Promise(resolve => requestAnimationFrame(() => resolve()));
+    }
+    async function waitFrames(count = 1) {
+        for (let i = 0; i < count; i++) {
+            await waitForAnimationFrame();
+        }
+    }
+    function getOrderedSlides() {
+        return slides.slice().sort((a, b) => a.id - b.id);
+    }
+    async function capturePitchFrame(gifInstance, delayMs) {
+        if (!gifInstance || !pitchContainer || typeof html2canvas !== 'function') return;
+        await waitFrames(1);
+        const scale = Math.max(GIF_CAPTURE_SCALE, window.devicePixelRatio || 1);
+        const canvas = await html2canvas(pitchContainer, {
+            backgroundColor: GIF_BACKGROUND,
+            scale,
+            useCORS: true,
+            logging: false
+        });
+        gifInstance.addFrame(canvas, {
+            delay: Math.max(GIF_MIN_FRAME_DELAY, Math.round(delayMs)),
+            copy: true
+        });
+    }
+    async function animateSlideForGif(targetSlideId, gifInstance, options = {}) {
+        const frames = Math.max(2, options.frames || 12);
+        const frameDelay = Math.max(GIF_MIN_FRAME_DELAY, options.frameDelay || Math.round(MAGIC_MOVE_DURATION / frames));
+        const { prevPositions, nextPositions } = setActiveSlide(targetSlideId, { animate: false, capturePositions: true });
+        if (!nextPositions.size) {
+            await capturePitchFrame(gifInstance, frameDelay);
+            return;
+        }
+        const entries = [];
+        nextPositions.forEach((nextData, tokenId) => {
+            const prevData = prevPositions.get(tokenId);
+            if (!prevData) return;
+            const el = nextData.el;
+            if (!el) return;
+            entries.push({
+                el,
+                dx: prevData.left - nextData.left,
+                dy: prevData.top - nextData.top,
+                prevTransition: el.style.transition || ''
+            });
+            el.style.transition = 'none';
+        });
+        if (!entries.length) {
+            await capturePitchFrame(gifInstance, frameDelay);
+            return;
+        }
+        try {
+            for (let frame = 0; frame < frames; frame++) {
+                const progress = frames === 1 ? 1 : frame / (frames - 1);
+                entries.forEach(({ el, dx, dy }) => {
+                    const remaining = 1 - progress;
+                    const currentDx = Math.round(dx * remaining);
+                    const currentDy = Math.round(dy * remaining);
+                    el.style.transform = `translate(${currentDx}px, ${currentDy}px)`;
+                });
+                await waitFrames(1);
+                await capturePitchFrame(gifInstance, frameDelay);
+            }
+        } finally {
+            entries.forEach(({ el, prevTransition }) => {
+                el.style.transform = '';
+                el.style.transition = prevTransition;
+            });
+        }
+    }
+    function renderGifAsync(gifInstance) {
+        return new Promise((resolve, reject) => {
+            let settled = false;
+            gifInstance.on('finished', (blob) => {
+                settled = true;
+                resolve(blob);
+            });
+            gifInstance.on('abort', () => {
+                if (!settled) reject(new Error('GIF export aborted'));
+            });
+            gifInstance.render();
+        });
+    }
+    function downloadGifBlob(blob) {
+        if (!blob) return;
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `tactical-sequence-${Date.now()}.gif`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+    }
+    function toggleExportButton(isBusy) {
+        if (!exportGifBtn) return;
+        exportGifBtn.disabled = !!isBusy;
+        exportGifBtn.textContent = isBusy ? '•••' : 'GIF';
+    }
+    async function exportSlidesAsGif() {
+        if (isExportingGif) return;
+        if (typeof html2canvas !== 'function' || typeof GIF === 'undefined') {
+            window.alert('GIF export requires html2canvas and gif.js.');
+            return;
+        }
+        const orderedSlides = getOrderedSlides();
+        if (!orderedSlides.length) {
+            window.alert('Add at least one slide before exporting.');
+            return;
+        }
+        isExportingGif = true;
+        toggleExportButton(true);
+        const originalSlideId = activeSlideId || orderedSlides[0].id;
+        const transitionFrames = Math.max(6, Math.round(MAGIC_MOVE_DURATION / 80));
+        const transitionDelay = Math.max(GIF_MIN_FRAME_DELAY, Math.round(MAGIC_MOVE_DURATION / transitionFrames));
+        const gifInstance = new GIF({
+            workers: 2,
+            quality: GIF_QUALITY,
+            workerScript: GIF_WORKER_URL,
+            background: GIF_BACKGROUND,
+            dither: GIF_DITHER
+        });
+        try {
+            setActiveSlide(orderedSlides[0].id, { animate: false });
+            await waitFrames(1);
+            await capturePitchFrame(gifInstance, GIF_STILL_DELAY);
+            for (let i = 1; i < orderedSlides.length; i++) {
+                await animateSlideForGif(orderedSlides[i].id, gifInstance, {
+                    frames: transitionFrames,
+                    frameDelay: transitionDelay
+                });
+                await capturePitchFrame(gifInstance, GIF_STILL_DELAY);
+            }
+            const blob = await renderGifAsync(gifInstance);
+            downloadGifBlob(blob);
+        } catch (err) {
+            console.error(err);
+            window.alert('Unable to export GIF. Please try again.');
+        } finally {
+            isExportingGif = false;
+            toggleExportButton(false);
+            if (originalSlideId != null) {
+                setActiveSlide(originalSlideId, { animate: false });
+            }
+        }
+    }
     // -------- Slides (simple tabs) --------
     function renderSlideThumb(id) {
         if (!slidesList) return;
@@ -1222,15 +1427,27 @@ document.addEventListener('DOMContentLoaded', () => {
             t.classList.toggle('active', t.dataset.slideId === String(activeSlideId));
         });
     }
-    function setActiveSlide(id) {
-        if (activeSlideId === id) return;
+    function setActiveSlide(id, options = {}) {
+        const { animate = true, capturePositions = false } = options;
+        const nextSlide = slides.find(s => s.id === id);
+        if (!nextSlide) return { prevPositions: new Map(), nextPositions: new Map() };
+        const prevSlide = slides.find(s => s.id === activeSlideId);
+        const needPositions = animate || capturePositions;
+        const prevPositions = needPositions && prevSlide ? captureTokenPositions(prevSlide.container) : new Map();
+        const nextPositions = needPositions ? snapshotSlidePositions(nextSlide.container) : new Map();
         slides.forEach(s => {
-            s.container.style.display = (s.id === id) ? 'block' : 'none';
+            const isActive = s.id === id;
+            s.container.style.display = isActive ? 'block' : 'none';
+            s.container.style.visibility = '';
+            s.container.style.pointerEvents = '';
         });
         activeSlideId = id;
-        const slide = slides.find(s => s.id === id);
-        currentSlideContainer = slide ? slide.container : null;
+        currentSlideContainer = nextSlide.container;
+        if (animate && prevPositions.size && nextPositions.size) {
+            playMagicMove(prevPositions, nextPositions);
+        }
         updateThumbActive();
+        return { prevPositions, nextPositions };
     }
     function addSlide() {
         const id = slides.length ? Math.max(...slides.map(s => s.id)) + 1 : 1;
@@ -1246,6 +1463,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const items = src.querySelectorAll('.player, .ball');
             items.forEach(node => {
                 const clone = node.cloneNode(true);
+                ensureTokenId(clone);
                 // Reattach behaviors
                 if (clone.classList.contains('player')) {
                     clone.draggable = true;
@@ -1326,6 +1544,7 @@ document.addEventListener('DOMContentLoaded', () => {
             first.appendChild(playersRoot.firstChild);
         }
         playersRoot.appendChild(first);
+        first.querySelectorAll('.player, .ball').forEach(ensureTokenId);
         slides.push({ id: 1, container: first, title: 'Slide 1' });
         currentSlideContainer = first;
         activeSlideId = 1;
@@ -1335,4 +1554,7 @@ document.addEventListener('DOMContentLoaded', () => {
             addSlideBtn.addEventListener('click', () => addSlide());
         }
     })();
+    if (exportGifBtn) {
+        exportGifBtn.addEventListener('click', () => exportSlidesAsGif());
+    }
 });

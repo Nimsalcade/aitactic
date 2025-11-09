@@ -7,8 +7,8 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="styles.css">
 </head>
-<body class="bg-gray-100 flex items-center justify-center h-screen overflow-hidden">
-    <div id="app" class="relative w-full max-w-[414px] h-[896px] overflow-hidden bg-white shadow-2xl rounded-3xl">
+<body>
+    <div id="app" class="app-shell">
         <!-- In-app confirm modal -->
         <div id="confirm-overlay" class="modal-overlay hidden">
             <div class="modal-card">
@@ -19,78 +19,104 @@
                 </div>
             </div>
         </div>
-        <!-- Slides Bar -->
-        <div id="slides-bar" class="absolute top-0 left-0 right-0 z-50">
-            <div class="slides-bar-inner">
-                <div id="slides-list" class="slides-list"></div>
-                <button id="add-slide" class="slide-add-btn" title="Add slide">+</button>
-            </div>
-        </div>
-        <!-- Pitch Container -->
-        <div id="pitch-container" class="relative w-full h-full">
-            <!-- Pitch Image -->
-            <img src="pitch.png" alt="Soccer Pitch" class="w-full h-full object-cover">
-            
-            <!-- Players will be added here dynamically -->
-            <div id="players-container" class="absolute inset-0"></div>
-            
-            <!-- Black box - Player boundary area -->
-            <div id="black-box" style="position: absolute; width: 375px; height: 620px; pointer-events: none;"></div>
-            
-            
-            <!-- Controls will go here -->
-            <div id="controls" class="absolute bottom-0 left-0 right-0 p-3 pb-3">
-                <div class="flex justify-center items-center gap-3 mb-3">
-                    <div class="flex items-center gap-2">
-                        <label class="control-select-label">My Team</label>
-                        <select id="formation-my" class="control-select">
-                            <option value="4-4-2" selected>4-4-2</option>
-                            <option value="4-3-3">4-3-3</option>
-                            <option value="4-2-3-1">4-2-3-1</option>
-                            <option value="3-5-2">3-5-2</option>
-                            <option value="5-3-2">5-3-2</option>
-                            <option value="3-4-3">3-4-3</option>
-                            <option value="4-5-1">4-5-1</option>
-                        </select>
+
+        <section class="pitch-panel">
+            <div class="panel-card pitch-card">
+                <div class="panel-heading pitch-heading">
+                    <div>
+                        <p class="eyebrow">Pitch workspace</p>
+                        <h2>Horizontal board</h2>
+                        <p>Create slides, drag-select, and keep the entire pitch in view.</p>
                     </div>
-                    <div class="flex items-center gap-2">
-                        <label class="control-select-label">Opposition</label>
-                        <select id="formation-opposition" class="control-select">
-                            <option value="4-4-2" selected>4-4-2</option>
-                            <option value="4-3-3">4-3-3</option>
-                            <option value="4-2-3-1">4-2-3-1</option>
-                            <option value="3-5-2">3-5-2</option>
-                            <option value="5-3-2">5-3-2</option>
-                            <option value="3-4-3">3-4-3</option>
-                            <option value="4-5-1">4-5-1</option>
-                        </select>
+                    <span class="meta-pill">Full width</span>
+                </div>
+                <div id="slides-bar" class="slides-bar">
+                    <div class="slides-bar-inner">
+                        <div id="slides-list" class="slides-list"></div>
+                        <button id="add-slide" class="slide-add-btn" title="Add slide">+</button>
+                        <button id="export-gif" class="slide-export-btn" title="Export slides as GIF">GIF</button>
                     </div>
                 </div>
-                <div class="flex justify-center items-center gap-3 controls-row">
-                    <button id="add-player" class="control-btn control-btn-blue group">
-                        <span class="control-btn-icon">+</span>
-                        <span class="control-btn-text">Player</span>
-                    </button>
-                    <button id="add-ball" class="control-btn control-btn-amber group">
-                        <span class="control-btn-icon">●</span>
-                        <span class="control-btn-text">Ball</span>
-                    </button>
-                    <button id="add-my-team" class="control-btn control-btn-blue group">
-                        <span class="control-btn-icon">⚑</span>
-                        <span class="control-btn-text">My Team</span>
-                    </button>
-                    <button id="add-opposition" class="control-btn control-btn-green group">
-                        <span class="control-btn-icon">⊕</span>
-                        <span class="control-btn-text">Opposition</span>
-                    </button>
-                    <button id="clear-all" class="control-btn control-btn-red group">
-                        <span class="control-btn-icon">✕</span>
-                        <span class="control-btn-text">Clear</span>
-                    </button>
+                    <div class="pitch-wrapper">
+                    <div id="pitch-container" class="pitch-surface">
+                        <img src="okkaoitch.jpg" alt="Soccer Pitch">
+                        <div id="players-container" class="players-layer"></div>
+                    </div>
                 </div>
             </div>
-        </div>
+        </section>
+
+        <aside class="control-panel">
+            <div class="control-header">
+                <p class="eyebrow">Tactical Suite</p>
+                <h1>Soccer Tactical Board</h1>
+                <p class="subtitle">Build training phases and match-day slides with a desktop workspace that stretches edge-to-edge.</p>
+                <span class="meta-pill">Desktop mode</span>
+                <p class="header-hint">Drag with your mouse • Shift + drag to multi-select</p>
+            </div>
+            <div class="panel-card controls-card">
+                <div class="panel-heading">
+                    <div>
+                        <h2>Control center</h2>
+                        <p>Drop full squads, sprinkle extra tokens, and reset everything in one place.</p>
+                    </div>
+                </div>
+                <div id="controls" class="controls-stack">
+                    <div class="control-formations">
+                        <div class="control-field">
+                            <label class="control-select-label">My Team</label>
+                            <select id="formation-my" class="control-select">
+                                <option value="4-4-2" selected>4-4-2</option>
+                                <option value="4-3-3">4-3-3</option>
+                                <option value="4-2-3-1">4-2-3-1</option>
+                                <option value="3-5-2">3-5-2</option>
+                                <option value="5-3-2">5-3-2</option>
+                                <option value="3-4-3">3-4-3</option>
+                                <option value="4-5-1">4-5-1</option>
+                            </select>
+                        </div>
+                        <div class="control-field">
+                            <label class="control-select-label">Opposition</label>
+                            <select id="formation-opposition" class="control-select">
+                                <option value="4-4-2" selected>4-4-2</option>
+                                <option value="4-3-3">4-3-3</option>
+                                <option value="4-2-3-1">4-2-3-1</option>
+                                <option value="3-5-2">3-5-2</option>
+                                <option value="5-3-2">5-3-2</option>
+                                <option value="3-4-3">3-4-3</option>
+                                <option value="4-5-1">4-5-1</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="control-buttons-grid">
+                        <button id="add-player" class="control-btn control-btn-blue group">
+                            <span class="control-btn-icon">+</span>
+                            <span class="control-btn-text">Player</span>
+                        </button>
+                        <button id="add-ball" class="control-btn control-btn-amber group">
+                            <span class="control-btn-icon">●</span>
+                            <span class="control-btn-text">Ball</span>
+                        </button>
+                        <button id="add-my-team" class="control-btn control-btn-blue group">
+                            <span class="control-btn-icon">⚑</span>
+                            <span class="control-btn-text">My Team</span>
+                        </button>
+                        <button id="add-opposition" class="control-btn control-btn-green group">
+                            <span class="control-btn-icon">⊕</span>
+                            <span class="control-btn-text">Opposition</span>
+                        </button>
+                        <button id="clear-all" class="control-btn control-btn-red group">
+                            <span class="control-btn-icon">✕</span>
+                            <span class="control-btn-text">Clear</span>
+                        </button>
+                    </div>
+                    <p class="controls-hint">Tip: Triple-click or triple-tap a token to remove it. Use the slides bar to storyboard different phases of play.</p>
+                </div>
+            </div>
+        </aside>
     </div>
+    <script src="vendor/html2canvas.min.js"></script>
+    <script src="vendor/gif.js"></script>
     <script src="app.js"></script>
 </body>
 </html>
