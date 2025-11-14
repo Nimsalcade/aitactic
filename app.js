@@ -9,6 +9,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const slidesBar = document.getElementById('slides-bar');
     const slidesList = document.getElementById('slides-list');
     const addSlideBtn = document.getElementById('add-slide');
+    const playSlidesBtn = document.getElementById('play-slides');
     const exportGifBtn = document.getElementById('export-gif');
     const confirmOverlay = document.getElementById('confirm-overlay');
     const confirmMessage = document.getElementById('confirm-message');
@@ -1449,6 +1450,32 @@ document.addEventListener('DOMContentLoaded', () => {
         updateThumbActive();
         return { prevPositions, nextPositions };
     }
+    // ---- Slides autoplay (Play/Pause) ----
+    let isPlayingSlides = false;
+    let slidePlayTimer = null;
+    const SLIDE_PLAY_DELAY_MS = 1400;
+    function advanceToNextSlide() {
+        if (!slides.length) return;
+        const idx = slides.findIndex(s => s.id === activeSlideId);
+        const nextIdx = (idx + 1) % slides.length;
+        setActiveSlide(slides[nextIdx].id);
+    }
+    function startSlideShow() {
+        if (isPlayingSlides || slides.length <= 1 || isExportingGif) return;
+        isPlayingSlides = true;
+        if (playSlidesBtn) playSlidesBtn.textContent = 'Pause';
+        advanceToNextSlide();
+        slidePlayTimer = setInterval(advanceToNextSlide, SLIDE_PLAY_DELAY_MS);
+    }
+    function stopSlideShow() {
+        if (!isPlayingSlides) return;
+        isPlayingSlides = false;
+        if (playSlidesBtn) playSlidesBtn.textContent = 'Play';
+        if (slidePlayTimer) { clearInterval(slidePlayTimer); slidePlayTimer = null; }
+    }
+    function toggleSlideShow() {
+        if (isPlayingSlides) stopSlideShow(); else startSlideShow();
+    }
     function addSlide() {
         const id = slides.length ? Math.max(...slides.map(s => s.id)) + 1 : 1;
         const container = document.createElement('div');
@@ -1554,7 +1581,20 @@ document.addEventListener('DOMContentLoaded', () => {
             addSlideBtn.addEventListener('click', () => addSlide());
         }
     })();
+    if (playSlidesBtn) {
+        playSlidesBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            toggleSlideShow();
+        });
+    }
+    // Pause playback when tab becomes hidden or when exporting
+    document.addEventListener('visibilitychange', () => {
+        if (document.hidden) stopSlideShow();
+    });
     if (exportGifBtn) {
-        exportGifBtn.addEventListener('click', () => exportSlidesAsGif());
+        exportGifBtn.addEventListener('click', () => {
+            stopSlideShow();
+            exportSlidesAsGif();
+        });
     }
 });
