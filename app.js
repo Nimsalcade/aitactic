@@ -1453,7 +1453,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // ---- Slides autoplay (Play/Pause) ----
     let isPlayingSlides = false;
     let slidePlayTimer = null;
-    const SLIDE_PLAY_DELAY_MS = 1400;
+    const SLIDE_PLAY_DELAY_MS = 2600;
     function advanceToNextSlide() {
         if (!slides.length) return;
         const idx = slides.findIndex(s => s.id === activeSlideId);
