@@ -11,6 +11,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const addSlideBtn = document.getElementById('add-slide');
     const playSlidesBtn = document.getElementById('play-slides');
     const exportGifBtn = document.getElementById('export-gif');
+    const speedSlider = document.getElementById('animation-speed');
+    const speedValueEl = document.getElementById('animation-speed-value');
     const confirmOverlay = document.getElementById('confirm-overlay');
     const confirmMessage = document.getElementById('confirm-message');
     const confirmOk = document.getElementById('confirm-ok');
@@ -1172,7 +1174,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         return positions;
     }
-    const MAGIC_MOVE_DURATION = 1500; // Duration in ms
+    const BASE_MAGIC_MOVE_DURATION_MS = 1500; // base duration at 1.0x
+    let magicMoveDurationMs = BASE_MAGIC_MOVE_DURATION_MS; // dynamic, controlled by slider
     function playMagicMove(prevPositions, nextPositions) {
         if (!prevPositions || !prevPositions.size || !nextPositions || !nextPositions.size) return;
         nextPositions.forEach((nextData, tokenId) => {
@@ -1192,7 +1195,7 @@ document.addEventListener('DOMContentLoaded', () => {
             el.style.transform = `translate(${dx}px, ${dy}px)`;
             requestAnimationFrame(() => {
                 void el.offsetWidth;
-                el.style.transition = `transform ${MAGIC_MOVE_DURATION}ms cubic-bezier(0.4, 0, 0.2, 1)`;
+                el.style.transition = `transform ${magicMoveDurationMs}ms cubic-bezier(0.4, 0, 0.2, 1)`;
                 el.style.transform = 'translate(0, 0)';
             });
             let timeoutId = null;
@@ -1211,7 +1214,7 @@ document.addEventListener('DOMContentLoaded', () => {
             };
             el[magicMoveCleanupSymbol] = cleanup;
             el.addEventListener('transitionend', cleanup);
-            timeoutId = setTimeout(cleanup, MAGIC_MOVE_DURATION + 120);
+            timeoutId = setTimeout(cleanup, magicMoveDurationMs + 120);
         });
     }
 
@@ -1250,7 +1253,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     async function animateSlideForGif(targetSlideId, gifInstance, options = {}) {
         const frames = Math.max(2, options.frames || 12);
-        const frameDelay = Math.max(GIF_MIN_FRAME_DELAY, options.frameDelay || Math.round(MAGIC_MOVE_DURATION / frames));
+        const frameDelay = Math.max(GIF_MIN_FRAME_DELAY, options.frameDelay || Math.round(magicMoveDurationMs / frames));
         const { prevPositions, nextPositions } = setActiveSlide(targetSlideId, { animate: false, capturePositions: true });
         if (!nextPositions.size) {
             await capturePitchFrame(gifInstance, frameDelay);
@@ -1336,8 +1339,8 @@ document.addEventListener('DOMContentLoaded', () => {
         isExportingGif = true;
         toggleExportButton(true);
         const originalSlideId = activeSlideId || orderedSlides[0].id;
-        const transitionFrames = Math.max(6, Math.round(MAGIC_MOVE_DURATION / 80));
-        const transitionDelay = Math.max(GIF_MIN_FRAME_DELAY, Math.round(MAGIC_MOVE_DURATION / transitionFrames));
+        const transitionFrames = Math.max(6, Math.round(magicMoveDurationMs / 80));
+        const transitionDelay = Math.max(GIF_MIN_FRAME_DELAY, Math.round(magicMoveDurationMs / transitionFrames));
         const gifInstance = new GIF({
             workers: 2,
             quality: GIF_QUALITY,
@@ -1453,7 +1456,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // ---- Slides autoplay (Play/Pause) ----
     let isPlayingSlides = false;
     let slidePlayTimer = null;
-    const SLIDE_PLAY_DELAY_MS = 2600;
+    function getSlidePlayDelayMs() {
+        // Leave time to observe the end state
+        return Math.max(1000, magicMoveDurationMs + 1100);
+    }
     function advanceToNextSlide() {
         if (!slides.length) return;
         const idx = slides.findIndex(s => s.id === activeSlideId);
@@ -1465,7 +1471,7 @@ document.addEventListener('DOMContentLoaded', () => {
         isPlayingSlides = true;
         if (playSlidesBtn) playSlidesBtn.textContent = 'Pause';
         advanceToNextSlide();
-        slidePlayTimer = setInterval(advanceToNextSlide, SLIDE_PLAY_DELAY_MS);
+        slidePlayTimer = setInterval(advanceToNextSlide, getSlidePlayDelayMs());
     }
     function stopSlideShow() {
         if (!isPlayingSlides) return;
@@ -1591,6 +1597,23 @@ document.addEventListener('DOMContentLoaded', () => {
     document.addEventListener('visibilitychange', () => {
         if (document.hidden) stopSlideShow();
     });
+    // Animation speed control
+    function updateAnimationSpeedFromUI() {
+        if (!speedSlider) return;
+        const factor = parseFloat(speedSlider.value || '1') || 1;
+        magicMoveDurationMs = Math.round(BASE_MAGIC_MOVE_DURATION_MS / factor);
+        if (speedValueEl) speedValueEl.textContent = `${factor.toFixed(1)}x`;
+        if (isPlayingSlides) {
+            if (slidePlayTimer) { clearInterval(slidePlayTimer); slidePlayTimer = null; }
+            slidePlayTimer = setInterval(advanceToNextSlide, getSlidePlayDelayMs());
+        }
+    }
+    if (speedSlider) {
+        speedSlider.addEventListener('input', updateAnimationSpeedFromUI);
+        speedSlider.addEventListener('change', updateAnimationSpeedFromUI);
+        // initialize
+        updateAnimationSpeedFromUI();
+    }
     if (exportGifBtn) {
         exportGifBtn.addEventListener('click', () => {
             stopSlideShow();
